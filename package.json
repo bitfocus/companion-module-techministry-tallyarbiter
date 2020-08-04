@@ -1,0 +1,29 @@
+{
+	"name": "techministry-tallyarbiter",
+	"version": "1.0.0",
+	"api_version": "1.0.0",
+	"keywords": [
+		"Tally Arbiter"
+	],
+	"manufacturer": "Tech Ministry",
+	"product": "Tally Arbiter",
+	"shortname": "tallyarbiter",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitfocus/companion-module-techministry-tallyarbiter.git"
+	},
+	"author": "Joseph Adams <josephdadams@gmail.com>",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/bitfocus/companion-module-techministry-tallyarbiter/issues"
+	},
+	"homepage": "https://github.com/bitfocus/companion-module-techministry-tallyarbiter#readme",
+	"dependencies": {
+		"socket.io-client": "^2.3.0"
+	}
+}
