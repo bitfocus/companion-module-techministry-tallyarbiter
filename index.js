@@ -101,7 +101,7 @@ instance.prototype.initFeedbacks = function() {
 
 	feedbacks['devices'] = {
 		label: 'Device In Preview or Program',
-		description: 'If Device is in Preview, change the color of the button.',
+		description: 'If Device is in Preview or Program, change the color of the button.',
 		options: [
 			{
 				type: 'dropdown',
@@ -461,9 +461,8 @@ instance.prototype.config_fields = function () {
 		{
 			type: 'textinput',
 			id: 'host',
-			label: 'Target IP',
-			width: 6,
-			regex: self.REGEX_IP
+			label: 'Target Host',
+			width: 6
 		},
 		{
 			type: 'textinput',
