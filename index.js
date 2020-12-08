@@ -1,4 +1,4 @@
-// TechMinistry-Orator
+// TechMinistry-TallyArbiter
 
 var instance_skel = require('../../instance_skel');
 var debug;
@@ -507,6 +507,23 @@ instance.prototype.actions = function (system) {
 					choices: self.listener_clients_array
 				}
 			]
+		},
+		'reassign_listener_client': {
+			label: 'Reassign A Specific Listener Client',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Listener Client',
+					id: 'listener_client',
+					choices: self.listener_clients_array
+				},
+				{
+					type: 'dropdown',
+					label: 'Device',
+					id: 'device',
+					choices: self.devices_array
+				}
+			]
 		}
 	};
 					
@@ -524,8 +541,18 @@ instance.prototype.action = function (action) {
 					socket.emit('flash', self.listener_clients[i].id);
 				}
 			}
+			break;
 		case 'flash_listener_client':
 			socket.emit('flash', options.listener_client);
+			break;
+		case 'reassign_listener_client':
+			let oldDeviceId = 'unassigned';
+			for (let i = 0; i < self.listener_clients.length; i++) {
+				if (self.listener_clients[i].id === options.listener_client) {
+					oldDeviceId = self.listener_clients[i].deviceId;
+				}
+			}
+			socket.emit('reassign', options.listener_client, oldDeviceId, options.device);
 			break;
 		default:
 			break;
