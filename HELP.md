@@ -16,6 +16,7 @@ Add an action to a button and choose the action you wish to use.
 **Available Actions:**
 * Flash All Listener Clients of a Device
 * Flash A Specific Listener Client
+* Reassign A Specific Listener Client
 
 **Available Feedbacks:**
 * A tally source is online/offline
