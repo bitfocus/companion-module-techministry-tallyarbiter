@@ -527,7 +527,7 @@ instance.prototype.actions = function (system) {
 		}
 	};
 					
-	self.system.emit('instance_actions', self.id, self.TallyArbiterActions );
+	self.setActions(self.TallyArbiterActions );
 };
 
 instance.prototype.action = function (action) {
