@@ -410,6 +410,7 @@ instance.prototype.initModule = function () {
 			}
 
 			self.actions();
+			self.initPresets();
 			self.initFeedbacks();
 			self.checkFeedbacks('listener_clients');
 		});
@@ -486,6 +487,46 @@ instance.prototype.initPresets = function () {
 					}
 				}
 			]
+		});
+	}
+
+	for (let i = 0; i < self.devices.length; i++) {
+		presets.push({
+			category: 'Flash a device',
+			label: 'device '+self.devices[i].name,
+			bank: {
+				style: 'text',
+				text: 'Flash '+self.devices[i].name,
+				size: '16',
+				color: '16777215',
+				bgcolor: self.rgb(0,0,0)
+			},
+			actions: [{
+				action: 'flash_device',
+				options: {
+					'device': self.devices[i].id,
+				}
+			}]
+		});
+	}
+
+	for (let i = 0; i < self.listener_clients.length; i++) {
+		presets.push({
+			category: 'Flash a listener',
+			label: 'listener '+self.listener_clients[i].id,
+			bank: {
+				style: 'text',
+				text: 'Flash '+self.listener_clients[i].id,
+				size: '12',
+				color: '16777215',
+				bgcolor: self.rgb(0,0,0)
+			},
+			actions: [{
+				action: 'flash_listener_client',
+				options: {
+					'listener_client': self.listener_clients[i].id,
+				}
+			}]
 		});
 	}
 
