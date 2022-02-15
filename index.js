@@ -32,9 +32,9 @@ instance.prototype.init = function () {
 	debug = self.debug;
 	log = self.log;
 
-	self.status(self.STATUS_OK);
+	self.status(self.STATUS_WARNING, 'connecting')
 
-	self.initVariables();
+	//self.initVariables();
 	
 	self.initModule();
 };
@@ -43,7 +43,7 @@ instance.prototype.updateConfig = function (config) {
 	var self = this;
 	self.config = config;
 
-	self.status(self.STATUS_OK);
+	self.status(self.STATUS_WARNING, 'connecting')
 
 	self.initModule();
 };
@@ -311,10 +311,13 @@ instance.prototype.initModule = function () {
 	
 	if (self.config.host) {		
 		socket = io.connect('http://' + self.config.host + ':' + self.config.port, {reconnection: true});
+		self.log('info', 'Connecting to Tally Arbiter server...');
 
 		// Add a connect listener
 		socket.on('connect', function() { 
 			socket.emit('companion');
+			self.status(self.STATUS_OK);
+			self.log('info', 'Connected. Retrieving data.');
 		});
 		
 		socket.on('sources', function(data) {
@@ -346,6 +349,7 @@ instance.prototype.initModule = function () {
 				self.devices_array.push(deviceObj);
 			}
 			self.initFeedbacks();
+			self.initPresets();
 			self.actions();
 		});
 
@@ -445,6 +449,48 @@ instance.prototype.initModule = function () {
 	
 	self.actions(); // export actions
 };
+
+instance.prototype.initPresets = function () {
+	var self = this;
+	var presets = [];
+
+	for (let i = 0; i < self.devices.length; i++) {
+		presets.push({
+			category: 'Devices',
+			label: self.devices[i].name,
+			bank: {
+				style: 'text',
+					text: self.devices[i].name,
+					size: '14',
+					color: '16777215',
+					bgcolor: self.rgb(0,0,0)
+			},
+			actions: [],
+			feedbacks: [
+				{
+					type: 'devices',
+					options: {
+						device: self.devices[i].id,
+						mode: 'preview',
+						fg: self.rgb(255, 255, 255),
+						bg: self.rgb(0, 255, 0)
+					}
+				},
+				{
+					type: 'devices',
+					options: {
+						device: self.devices[i].id,
+						mode: 'program',
+						fg: self.rgb(255, 255, 255),
+						bg: self.rgb(255, 0, 0)
+					}
+				}
+			]
+		});
+	}
+
+	self.setPresetDefinitions(presets);
+}
 
 // Return config fields for web config
 instance.prototype.config_fields = function () {
