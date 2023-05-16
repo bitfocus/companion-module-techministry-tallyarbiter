@@ -1,686 +1,309 @@
-// TechMinistry-TallyArbiter
+// techministry-tallyarbiter
 
-var instance_skel = require('../../instance_skel');
-var debug;
-var log;
+const { InstanceBase, InstanceStatus, Regex, runEntrypoint } = require('@companion-module/base')
+const UpgradeScripts = require('./src/upgrades')
 
-var io = require('socket.io-client');
-var socket = null;
+const config = require('./src/config')
+const actions = require('./src/actions')
+const feedbacks = require('./src/feedbacks')
+const variables = require('./src/variables')
+const presets = require('./src/presets')
 
-function instance(system, id, config) {
-	var self = this;
+const utils = require('./src/utils')
 
-	// super-constructor
-	instance_skel.apply(this, arguments);
+const io = require('socket.io-client');
 
-	self.actions(); // export actions
-	
-	return self;
-}
+class tallyarbiterInstance extends InstanceBase {
+	constructor(internal) {
+		super(internal)
 
-instance.prototype.sources = [];
-instance.prototype.devices = [];
-instance.prototype.bus_options = [];
+		// Assign the methods from the listed files to this class
+		Object.assign(this, {
+			...config,
+			...actions,
+			...feedbacks,
+			...variables,
+			...presets,
+			...utils
+		})
 
-instance.prototype.listener_clients = [];
-instance.prototype.cloud_destinations = [];
-instance.prototype.tsl_clients = [];
+		this.socket = null;
 
-instance.prototype.init = function () {
-	var self = this;
+		this.sources_array = [
+			{ id: '0', label: '(Select a Source)' }
+		];
 
-	debug = self.debug;
-	log = self.log;
+		this.devices_array = [
+			{ id: '0', label: 'No Devices Found' }
+		];
 
-	self.status(self.STATUS_WARNING, 'connecting')
+		this.sources = [];
+		this.devices = [];
+		this.bus_options = [];
 
-	//self.initVariables();
-	
-	self.initModule();
-};
+		this.listener_clients = [];
+		this.cloud_destinations = [];
+		this.tsl_clients = [];
+	}
 
-instance.prototype.updateConfig = function (config) {
-	var self = this;
-	self.config = config;
-
-	self.status(self.STATUS_WARNING, 'connecting')
-
-	self.initModule();
-};
-
-instance.prototype.initVariables = function () {
-	var self = this;
-
-	var variables = [
-		{
-			label: 'Variable Label',
-			name:  'variableName'
-		}
-	];
-
-	self.setVariableDefinitions(variables);
-};
-
-instance.prototype.updateVariable = function (variableName, value) {
-	var self = this;
-	
-	self.setVariable(variableName, value);
-};
-
-instance.prototype.initFeedbacks = function() {
-	var self = this;
-	
-	// feedbacks
-	var feedbacks = {};
-
-	feedbacks['sources'] = {
-		label: 'Source Offline',
-		description: 'If the selected Source goes offline, change the color of the button',
-		options: [
-			{
-				type: 'dropdown',
-				label: 'Source',
-				id: 'source',
-				choices: self.sources_array,
-				default: self.sources_array[0].id
-			},
-			{
-				type: 'colorpicker',
-				label: 'Foreground color',
-				id: 'fg',
-				default: self.rgb(255,255,255)
-			},
-			{
-				type: 'colorpicker',
-				label: 'Background color',
-				id: 'bg',
-				default: self.rgb(255,0,0)
-			},
-		]
-	};
-
-	feedbacks['devices'] = {
-		label: 'Device In Preview or Program',
-		description: 'If Device is in Preview or Program, change the color of the button.',
-		options: [
-			{
-				type: 'dropdown',
-				label: 'Device',
-				id: 'device',
-				choices: self.devices_array,
-				default: self.devices_array[0].id
-			},
-			{
-				type: 'dropdown',
-				label: 'Mode',
-				id: 'mode',
-				choices: [ { id: 'preview', label: 'Preview' }, { id: 'program', label: 'Program' }, { id: 'previewprogram', label: 'Preview + Program' } ] 
-			},
-			{
-				type: 'colorpicker',
-				label: 'Foreground color',
-				id: 'fg',
-				default: self.rgb(255,255,255)
-			},
-			{
-				type: 'colorpicker',
-				label: 'Background color',
-				id: 'bg',
-				default: self.rgb(0,255,0)
-			},
-		]
-	};
-
-	feedbacks['listener_clients'] = {
-		label: 'Listener Client Offline',
-		description: 'If the selected Listener Client goes offline, change the color of the button',
-		options: [
-			{
-				type: 'dropdown',
-				label: 'Listener client',
-				id: 'listener_client',
-				choices: self.listener_clients_array,
-				default: self.listener_clients_array[0].id
-			},
-			{
-				type: 'colorpicker',
-				label: 'Foreground color',
-				id: 'fg',
-				default: self.rgb(255,255,255)
-			},
-			{
-				type: 'colorpicker',
-				label: 'Background color',
-				id: 'bg',
-				default: self.rgb(255,0,0)
-			},
-		]
-	};
-
-	feedbacks['tsl_clients'] = {
-		label: 'TSL Client Offline',
-		description: 'If the selected TSL Client goes offline, change the color of the button',
-		options: [
-			{
-				type: 'dropdown',
-				label: 'TSL Client',
-				id: 'tsl_client',
-				choices: self.tsl_clients_array,
-				default: self.tsl_clients_array[0].id
-			},
-			{
-				type: 'colorpicker',
-				label: 'Foreground color',
-				id: 'fg',
-				default: self.rgb(255,255,255)
-			},
-			{
-				type: 'colorpicker',
-				label: 'Background color',
-				id: 'bg',
-				default: self.rgb(255,0,0)
-			},
-		]
-	};
-
-	feedbacks['cloud_destinations'] = {
-		label: 'Cloud Destination Offline',
-		description: 'If the selected Cloud Destination goes offline, change the color of the button',
-		options: [
-			{
-				type: 'dropdown',
-				label: 'Cloud Destination',
-				id: 'cloud_destination',
-				choices: self.cloud_destinations_array,
-				default: self.cloud_destinations_array[0].id
-			},
-			{
-				type: 'colorpicker',
-				label: 'Foreground color',
-				id: 'fg',
-				default: self.rgb(255,255,255)
-			},
-			{
-				type: 'colorpicker',
-				label: 'Background color',
-				id: 'bg',
-				default: self.rgb(255,0,0)
-			},
-		]
-	};
-
-	self.setFeedbackDefinitions(feedbacks);
-}
-
-instance.prototype.feedback = function(feedback, bank) {
-	var self = this;
-
-	if (feedback.type === 'sources') {
-		let source = self.GetSourceBySourceId(feedback.options.source);
-		if (source) {
-			if (source.connected === false) {
-				return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-			}
+	async destroy() {
+		if (this.socket) {
+			this.socket.close(); 
+			this.socket = null;
 		}
 	}
 
-	if (feedback.type === 'devices') {
-		let device = self.GetDeviceByDeviceId(feedback.options.device);
-		if (device) {
-			switch(feedback.options.mode) {
-				case 'preview':
-					if (device.mode_preview) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-					}
-					break;
-				case 'program':
-					if (device.mode_program) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-					}
-					break;
-				case 'previewprogram':
-					if ((device.mode_preview) && (device.mode_program)) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-					}
-					break;
-			}
-		}
+	async init(config) {
+		this.updateStatus(InstanceStatus.Connecting)
+		this.configUpdated(config)
 	}
 
-	if (feedback.type === 'listener_clients') {
-		let listener_client = self.GetListenerClientById(feedback.options.listener_client);
-		if (listener_client) {
-			if (listener_client.inactive === true) {
-				return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-			}
+	async configUpdated(config) {
+		this.config = config
+
+		if (this.config.verbose) {
+			this.log('info', 'Verbose mode enabled. Log entries will contain detailed information.');
 		}
-	}
-
-	if (feedback.type === 'tsl_clients') {
-		let tsl_client = self.GetTSLClientById(feedback.options.tsl_client);
-		if (tsl_client) {
-			if (tsl_client.connected === false) {
-				return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-			}
-		}
-	}
-
-	if (feedback.type === 'cloud_destinations') {
-		let cloud_destination = self.GetCloudDestinationById(feedback.options.cloud_destination);
-		if (cloud_destination) {
-			if (cloud_destination.connected === false) {
-				return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-			}
-		}
-	}
-
-	return {};
-}
-
-instance.prototype.initModule = function () {
-	var self = this;
 	
-	self.sources = [];
-	self.sources_array = [
-		{id: '0', label: '(Select a Source)'}
-	];
-
-	self.devices = [];
-	self.devices_array = [
-		{id: '0', label: '(Select a Device)'}
-	];
-
-	self.bus_options = [];
-	self.device_sources = [];
-	self.device_states = [];
-
-	self.listener_clients = [];
-	self.listener_clients_array = [
-		{id: '0', label: '(Select a Listener Client)'}
-	];
-
-	self.tsl_clients = [];
-	self.tsl_clients_array = [
-		{id: '0', label: '(Select a TSL Client)'}
-	];
-
-	self.cloud_destinations = [];
-	self.cloud_destinations_array = [
-		{id: '0', label: '(Select a Cloud Destination)'}
-	];
+		this.updateStatus(InstanceStatus.Connecting)
 	
-	if (self.config.host) {		
-		socket = io.connect('http://' + self.config.host + ':' + self.config.port, {reconnection: true});
-		self.log('info', 'Connecting to Tally Arbiter server...');
+		this.initConnection();
+	
+		this.initActions();
+		this.initFeedbacks();
+		this.initVariables();
+		this.initPresets();
+	
+		this.checkFeedbacks();
+		this.checkVariables();
+	}
 
-		// Add a connect listener
-		socket.on('connect', function() { 
-			socket.emit('companion');
-			self.status(self.STATUS_OK);
-			self.log('info', 'Connected. Retrieving data.');
-		});
+	initConnection() {
+		let self = this;
+
+		self.sources = [];
+		self.sources_array = [
+			{ id: '0', label: '(Select a Source)' }
+		];
+
+		self.devices = [];
+		self.devices_array = [
+			{ id: '0', label: '(Select a Device)' }
+		];
+
+		self.bus_options = [];
+		self.device_sources = [];
+		self.device_states = [];
+
+		self.listener_clients = [];
+		self.listener_clients_array = [
+			{ id: '0', label: '(Select a Listener Client)' }
+		];
+
+		self.tsl_clients = [];
+		self.tsl_clients_array = [
+			{ id: '0', label: '(Select a TSL Client)' }
+		];
+
+		self.cloud_destinations = [];
+		self.cloud_destinations_array = [
+			{ id: '0', label: '(Select a Cloud Destination)' }
+		];
+
+		if (this.config.host) {
+			this.log('info', `Opening connection to Tally Arbiter: ${this.config.host}:${this.config.port}`);
+	
+			this.socket = io.connect('http://' + this.config.host + ':' + this.config.port, {reconnection: true});
+	
+			// Add listeners
+			this.socket.on('connect', function() {
+				self.log('info', 'Connected to Tally Arbiter. Retrieving data.');
+				self.updateStatus(InstanceStatus.Ok);
+				self.socket.emit('companion');
+			});
+	
+			this.socket.on('disconnect', function() { 
+				self.updateStatus(InstanceStatus.ConnectionFailure);
+				self.log('error', 'Disconnected from Tally Arbiter.');
+				self.checkVariables();
+			});
+	
+			this.socket.on('version', function(version) {
+				self.STATUS.version = version;
+				self.checkVariables();
+			});
+	
+			this.socket.on('sources', function(data) {
+				self.sources = data;
+				self.sources_array = [
+					{ id: '0', label: '(Select a Source)' }
+				];
+				for (let i = 0; i < self.sources.length; i++) {
+					let sourceObj = {};
+					sourceObj.id = self.sources[i].id;
+					sourceObj.label = self.sources[i].name;
+					self.sources_array.push(sourceObj);
+				}
+				self.initVariables();
+				self.initFeedbacks();
+
+				self.checkVariables();
+				self.checkFeedbacks('sources');
+			});
+
+			this.socket.on('devices', function(data) {
+				self.devices = data;
+				self.devices_array = [
+					{ id: '0', label: '(Select a Device)' }
+				];
+				for (let i = 0; i < self.devices.length; i++) {
+					let deviceObj = {};
+					deviceObj.id = self.devices[i].id;
+					deviceObj.label = self.devices[i].name;
+					self.devices_array.push(deviceObj);
+				}
+
+				self.initActions();
+				self.initVariables();
+				self.initFeedbacks();
+				self.initPresets();
+
+				self.checkVariables();
+			});
+
+			this.socket.on('bus_options', function(data) {
+				self.bus_options = data;
+			});
+
+			this.socket.on('device_sources', function(data) {
+				self.device_sources = data;
+			});
+
+			this.socket.on('device_states', function(data) {
+				self.device_states = data;
+
+				for (let i = 0; i < self.devices.length; i++) {
+					let mode_preview = false;
+					let mode_program = false;
 		
-		socket.on('sources', function(data) {
-			self.sources = data;
-			self.sources_array = [
-				{id: '0', label: '(Select a Source)'}
-			];
-			for (let i = 0; i < self.sources.length; i++) {
-				self.updateVariable('source_' + self.sources[i].id + '_name', self.sources[i].name);
-				let sourceObj = {};
-				sourceObj.id = self.sources[i].id;
-				sourceObj.label = self.sources[i].name;
-				self.sources_array.push(sourceObj);
-			}
-			self.initFeedbacks();
-			self.checkFeedbacks('sources');
-		});
+					for (let j = 0; j < self.device_states.length; j++) {
+						if ((self.device_states[j].deviceId === self.devices[i].id) && (self.GetBusById(self.device_states[j].busId).type === 'preview')) {
+							if (self.device_states[j].sources.length > 0) {
+								mode_preview = true;
+							}
+							else {
+								mode_preview = false;
+							}
+						}
+						else if ((self.device_states[j].deviceId === self.devices[i].id) && (self.GetBusById(self.device_states[j].busId).type === 'program')) {
+							if (self.device_states[j].sources.length > 0) {
+								mode_program = true;
+							}
+							else {
+								mode_program = false;
+							}
+						}
+					}
 
-		socket.on('devices', function(data) {
-			self.devices = data;
-			self.devices_array = [
-				{id: '0', label: '(Select a Device)'}
-			];
-			for (let i = 0; i < self.devices.length; i++) {
-				self.updateVariable('device_' + self.devices[i].id + '_name', self.devices[i].name);
-				let deviceObj = {};
-				deviceObj.id = self.devices[i].id;
-				deviceObj.label = self.devices[i].name;
-				self.devices_array.push(deviceObj);
-			}
-			self.initFeedbacks();
-			self.initPresets();
-			self.actions();
-		});
+					self.devices[i].mode_preview = mode_preview;
+					self.devices[i].mode_program = mode_program;
+				}
 
-		socket.on('bus_options', function(data) {
-			self.bus_options = data;
-		});
+				self.checkFeedbacks('devices');
+			});
 
-		socket.on('device_sources', function(data) {
-			self.device_sources = data;
-		});
+			this.socket.on('listener_clients', function(data) {
+				self.listener_clients = data;
 
-		socket.on('device_states', function(data) {
-			self.device_states = data;
+				self.listener_clients_array = [
+					{ id: '0', label: '(Select a Listener Client)' }
+				];
+				for (let i = 0; i < self.listener_clients.length; i++) {
+					if (self.listener_clients[i].inactive === false) {
+						let listenerClientObj = {};
+						listenerClientObj.id = self.listener_clients[i].id;
+						listenerClientObj.label = `${self.GetDeviceByDeviceId(self.listener_clients[i].deviceId).name} - ${self.listener_clients[i].ipAddress} (${self.listener_clients[i].listenerType})`;
+						self.listener_clients_array.push(listenerClientObj);
+					}
+				}
 
-			for (let i = 0; i < self.devices.length; i++) {
-				let mode_preview = false;
-				let mode_program = false;
+				self.initActions();
+				self.initPresets();
+				self.initFeedbacks();
+				self.checkFeedbacks('listener_clients');
+			});
+
+			this.socket.on('tsl_clients', function(data) {
+				self.tsl_clients = data;
+
+				self.tsl_clients_array = [
+					{id: '0', label: '(Select a TSL Client)'}
+				];
+				for (let i = 0; i < self.tsl_clients.length; i++) {
+					let tslClientObj = {};
+					tslClientObj.id = self.tsl_clients[i].id;
+					tslClientObj.label = `${self.tsl_clients[i].ip}:${self.tsl_clients[i].port} (${self.tsl_clients[i].transport})`;
+					self.tsl_clients_array.push(tslClientObj);
+				}
+				self.initFeedbacks();
+				self.checkFeedbacks('tsl_clients');
+			});
+
+			this.socket.on('cloud_destinations', function(data) {
+				self.cloud_destinations = data;
+
+				self.cloud_destinations_array = [
+					{id: '0', label: '(Select a Cloud Destination)'}
+				];
+				for (let i = 0; i < self.cloud_destinations.length; i++) {
+					let cloudDestinationObj = {};
+					cloudDestinationObj.id = self.cloud_destinations[i].id;
+					cloudDestinationObj.label = `${self.cloud_destinations[i].host}:${self.cloud_destinations[i].port}`;
+					self.cloud_destinations_array.push(cloudDestinationObj);
+				}
+				self.initFeedbacks();
+				self.checkFeedbacks('cloud_destinations');
+			});
 	
-				for (let j = 0; j < self.device_states.length; j++) {
-					if ((self.device_states[j].deviceId === self.devices[i].id) && (self.GetBusById(self.device_states[j].busId).type === 'preview')) {
-						if (self.device_states[j].sources.length > 0) {
-							mode_preview = true;
-						}
-						else {
-							mode_preview = false;
-						}
-					}
-					else if ((self.device_states[j].deviceId === self.devices[i].id) && (self.GetBusById(self.device_states[j].busId).type === 'program')) {
-						if (self.device_states[j].sources.length > 0) {
-							mode_program = true;
-						}
-						else {
-							mode_program = false;
-						}
-					}
-				}
-
-				self.devices[i].mode_preview = mode_preview;
-				self.devices[i].mode_program = mode_program;
-			}
-
-			self.checkFeedbacks('devices');
-		});
-
-		socket.on('listener_clients', function(data) {
-			self.listener_clients = data;
-
-			self.listener_clients_array = [
-				{id: '0', label: '(Select a Listener Client)'}
-			];
-			for (let i = 0; i < self.listener_clients.length; i++) {
-				if (self.listener_clients[i].inactive === false) {
-					let listenerClientObj = {};
-					listenerClientObj.id = self.listener_clients[i].id;
-					listenerClientObj.label = `${self.GetDeviceByDeviceId(self.listener_clients[i].deviceId).name} - ${self.listener_clients[i].ipAddress} (${self.listener_clients[i].listenerType})`;
-					self.listener_clients_array.push(listenerClientObj);
-				}
-			}
-
-			self.actions();
-			self.initPresets();
-			self.initFeedbacks();
-			self.checkFeedbacks('listener_clients');
-		});
-
-		socket.on('tsl_clients', function(data) {
-			self.tsl_clients = data;
-
-			self.tsl_clients_array = [
-				{id: '0', label: '(Select a TSL Client)'}
-			];
-			for (let i = 0; i < self.tsl_clients.length; i++) {
-				let tslClientObj = {};
-				tslClientObj.id = self.tsl_clients[i].id;
-				tslClientObj.label = `${self.tsl_clients[i].ip}:${self.tsl_clients[i].port} (${self.tsl_clients[i].transport})`;
-				self.tsl_clients_array.push(tslClientObj);
-			}
-			self.initFeedbacks();
-			self.checkFeedbacks('tsl_clients');
-		});
-
-		socket.on('cloud_destinations', function(data) {
-			self.cloud_destinations = data;
-
-			self.cloud_destinations_array = [
-				{id: '0', label: '(Select a Cloud Destination)'}
-			];
-			for (let i = 0; i < self.cloud_destinations.length; i++) {
-				let cloudDestinationObj = {};
-				cloudDestinationObj.id = self.cloud_destinations[i].id;
-				cloudDestinationObj.label = `${self.cloud_destinations[i].host}:${self.cloud_destinations[i].port}`;
-				self.cloud_destinations_array.push(cloudDestinationObj);
-			}
-			self.initFeedbacks();
-			self.checkFeedbacks('cloud_destinations');
-		});
-	}
-	
-	self.actions(); // export actions
-};
-
-instance.prototype.initPresets = function () {
-	var self = this;
-	var presets = [];
-
-	for (let i = 0; i < self.devices.length; i++) {
-		presets.push({
-			category: 'Devices',
-			label: self.devices[i].name,
-			bank: {
-				style: 'text',
-					text: self.devices[i].name,
-					size: '14',
-					color: '16777215',
-					bgcolor: self.rgb(0,0,0)
-			},
-			actions: [],
-			feedbacks: [
-				{
-					type: 'devices',
-					options: {
-						device: self.devices[i].id,
-						mode: 'preview',
-						fg: self.rgb(255, 255, 255),
-						bg: self.rgb(0, 255, 0)
-					}
-				},
-				{
-					type: 'devices',
-					options: {
-						device: self.devices[i].id,
-						mode: 'program',
-						fg: self.rgb(255, 255, 255),
-						bg: self.rgb(255, 0, 0)
-					}
-				}
-			]
-		});
-	}
-
-	for (let i = 0; i < self.devices.length; i++) {
-		presets.push({
-			category: 'Flash a device',
-			label: 'device '+self.devices[i].name,
-			bank: {
-				style: 'text',
-				text: 'Flash '+self.devices[i].name,
-				size: '16',
-				color: '16777215',
-				bgcolor: self.rgb(0,0,0)
-			},
-			actions: [{
-				action: 'flash_device',
-				options: {
-					'device': self.devices[i].id,
-				}
-			}]
-		});
-	}
-
-	for (let i = 0; i < self.listener_clients.length; i++) {
-		presets.push({
-			category: 'Flash a listener',
-			label: 'listener '+self.listener_clients[i].id,
-			bank: {
-				style: 'text',
-				text: 'Flash '+self.listener_clients[i].id,
-				size: '12',
-				color: '16777215',
-				bgcolor: self.rgb(0,0,0)
-			},
-			actions: [{
-				action: 'flash_listener_client',
-				options: {
-					'listener_client': self.listener_clients[i].id,
-				}
-			}]
-		});
-	}
-
-	self.setPresetDefinitions(presets);
-}
-
-// Return config fields for web config
-instance.prototype.config_fields = function () {
-	var self = this;
-
-	return [
-		{
-			type: 'text',
-			id: 'info',
-			width: 12,
-			label: 'Information',
-			value: 'You will need to have the Tally Arbiter program running on the remote computer.'
-		},
-		{
-			type: 'textinput',
-			id: 'host',
-			label: 'Target Host',
-			width: 6
-		},
-		{
-			type: 'textinput',
-			id: 'port',
-			label: 'Target Port',
-			default: 4455,
-			width: 4,
-			regex: self.REGEX_PORT
+			this.socket.on('error', function(error) {
+				self.updateStatus(InstanceStatus.ConnectionFailure);
+				self.log('error', 'Error from Tally Arbiter: ' + error);
+			});
 		}
-	]
-}
+	}
 
-// When module gets deleted
-instance.prototype.destroy = function () {
-	var self = this;
-	socket.close();
-	debug('destroy', self.id);
-}
-
-instance.prototype.actions = function (system) {
-	var self = this;
-
-	self.TallyArbiterActions = {
-		'flash_device': {
-			label: 'Flash All Listener Clients of a Device',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Device',
-					id: 'device',
-					choices: self.devices_array
+	sendCommand(cmd, arg1 = null, arg2 = null, arg3 = null) {	
+		if (this.socket !== undefined) {
+			if (this.config.verbose) {
+				this.log('info', 'Sending: ' + cmd);
+			}
+	
+			if (arg1 !== null) {
+				if (arg2 !== null) {
+					if (arg3 !== null) {
+						this.socket.emit(cmd, arg1, arg2, arg3);
+					}
+					else {
+						this.socket.emit(cmd, arg1, arg2);
+					}
 				}
-			]
-		},
-		'flash_listener_client': {
-			label: 'Flash A Specific Listener Client',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Listener Client',
-					id: 'listener_client',
-					choices: self.listener_clients_array
+				else {
+					this.socket.emit(cmd, arg1);
 				}
-			]
-		},
-		'reassign_listener_client': {
-			label: 'Reassign A Specific Listener Client',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Listener Client',
-					id: 'listener_client',
-					choices: self.listener_clients_array
-				},
-				{
-					type: 'dropdown',
-					label: 'Device',
-					id: 'device',
-					choices: self.devices_array
-				}
-			]
+			}
+			else {
+				this.socket.emit(cmd);
+			}
+		}
+		else {
+			debug('Unable to send: Not connected to Tally Arbiter.');
+	
+			if (this.config.verbose) {
+				this.log('warn', 'Unable to send: Not connected to Tally Arbiter.');
+			}
 		}
 	};
-					
-	self.setActions(self.TallyArbiterActions );
-};
 
-instance.prototype.action = function (action) {
-	var self = this;
-	var options = action.options;
-
-	switch (action.action) {
-		case 'flash_device':
-			for (let i = 0; i < self.listener_clients.length; i++) {
-				if (self.listener_clients[i].deviceId === options.device) {
-					socket.emit('flash', self.listener_clients[i].id);
-				}
-			}
-			break;
-		case 'flash_listener_client':
-			socket.emit('flash', options.listener_client);
-			break;
-		case 'reassign_listener_client':
-			let oldDeviceId = 'unassigned';
-			for (let i = 0; i < self.listener_clients.length; i++) {
-				if (self.listener_clients[i].id === options.listener_client) {
-					oldDeviceId = self.listener_clients[i].deviceId;
-				}
-			}
-			socket.emit('reassign', options.listener_client, oldDeviceId, options.device);
-			break;
-		default:
-			break;
-	}
-};
-
-instance.prototype.GetSourceBySourceId = function (sourceId) {
-	//gets the Source object by id
-	var self = this;
-	return self.sources.find( ({ id }) => id === sourceId);
 }
 
-instance.prototype.GetBusById = function (busId) {
-	//gets the Bus object by id
-	var self = this;
-	return self.bus_options.find( ({ id }) => id === busId);
-}
-
-instance.prototype.GetDeviceByDeviceId = function (deviceId) {
-	//gets the Device object by id
-	var self = this;
-	return self.devices.find( ({ id }) => id === deviceId);
-}
-
-instance.prototype.GetListenerClientById = function (listenerClientId) {
-	//gets the Listner Client object by id
-	var self = this;
-	return self.listener_clients.find( ({ id }) => id === listenerClientId);
-}
-
-instance.prototype.GetTSLClientById = function (tslClientId) {
-	//gets the TSL Client object by id
-	var self = this;
-	return self.tsl_clients.find( ({ id }) => id === tslClientId);
-}
-
-instance.prototype.GetCloudDestinationById = function (cloudDestinationId) {
-	//gets the Cloud Desination object by id
-	var self = this;
-	return self.cloud_destinations.find( ({ id }) => id === cloudDestinationId);
-}
-
-instance_skel.extendedBy(instance);
-exports = module.exports = instance;
+runEntrypoint(tallyarbiterInstance, UpgradeScripts)

@@ -18,9 +18,23 @@ Add an action to a button and choose the action you wish to use.
 * Flash A Specific Listener Client
 * Reassign A Specific Listener Client
 
+**Available Variables:**
+* Total Sources
+* Total Devices
+* Total Listener Clients
+* Total TSL Clients
+* Total Cloud Destinations
+* Name of each Source
+* Name of each Device
+
 **Available Feedbacks:**
 * A tally source is online/offline
 * The selected device is in preview or program
 * A Listener Client has disconnected
 * A TSL Client has disconnected
 * A Cloud Destination has disconnected
+
+**Available Presets:**
+* Feedback for each Device with Preview and Program status
+* Flash a Device
+* Flash a Listener Client
