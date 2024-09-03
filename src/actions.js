@@ -16,7 +16,7 @@ module.exports = {
 			],
 			callback: async (event) => {
 				for (let i = 0; i < self.listener_clients.length; i++) {
-					if (self.listener_clients[i].deviceId === options.device) {
+					if (self.listener_clients[i].deviceId === event.options.device) {
 						self.sendCommand('flash', self.listener_clients[i].id);
 					}
 				}
