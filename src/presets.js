@@ -2,8 +2,8 @@ const { combineRgb } = require('@companion-module/base')
 
 module.exports = {
 	initPresets: function () {
-		let self = this;
-		let presets = [];
+		let self = this
+		let presets = []
 
 		const foregroundColor = combineRgb(255, 255, 255) // White
 		const backgroundColorRed = combineRgb(255, 0, 0) // Red
@@ -17,7 +17,7 @@ module.exports = {
 					text: self.devices[i].name,
 					size: '14',
 					color: '16777215',
-					bgcolor: combineRgb(0,0,0)
+					bgcolor: combineRgb(0, 0, 0),
 				},
 				steps: [],
 				feedbacks: [
@@ -28,9 +28,9 @@ module.exports = {
 							mode: 'preview',
 						},
 						style: {
-							bgcolor: combineRgb(0,255,0),
-							fgcolor: combineRgb(255,255,255)
-						}
+							bgcolor: combineRgb(0, 255, 0),
+							fgcolor: combineRgb(255, 255, 255),
+						},
 					},
 					{
 						feedbackId: 'devices',
@@ -39,24 +39,24 @@ module.exports = {
 							mode: 'program',
 						},
 						style: {
-							bgcolor: combineRgb(255,0,0),
-							fgcolor: combineRgb(255,255,255)
-						}
-					}
-				]
-			});
+							bgcolor: combineRgb(255, 0, 0),
+							fgcolor: combineRgb(255, 255, 255),
+						},
+					},
+				],
+			})
 		}
-	
+
 		for (let i = 0; i < self.devices.length; i++) {
 			presets.push({
 				type: 'button',
 				category: 'Flash a device',
-				name: 'device '+self.devices[i].name,
+				name: 'device ' + self.devices[i].name,
 				style: {
-					text: 'Flash '+self.devices[i].name,
+					text: 'Flash ' + self.devices[i].name,
 					size: '16',
 					color: '16777215',
-					bgcolor: combineRgb(0,0,0)
+					bgcolor: combineRgb(0, 0, 0),
 				},
 				steps: [
 					{
@@ -65,26 +65,26 @@ module.exports = {
 								actionId: 'flash_device',
 								options: {
 									device: self.devices[i].id,
-								}
-							}
+								},
+							},
 						],
-						up: []
-					}
+						up: [],
+					},
 				],
-				feedbacks: []
-			});
+				feedbacks: [],
+			})
 		}
-	
+
 		for (let i = 0; i < self.listener_clients.length; i++) {
 			presets.push({
 				type: 'button',
 				category: 'Flash a listener',
-				name: 'listener '+self.listener_clients[i].id,
+				name: 'listener ' + self.listener_clients[i].id,
 				style: {
-					text: 'Flash '+self.listener_clients[i].id,
+					text: 'Flash ' + self.listener_clients[i].id,
 					size: '12',
 					color: '16777215',
-					bgcolor: combineRgb(0,0,0)
+					bgcolor: combineRgb(0, 0, 0),
 				},
 				steps: [
 					{
@@ -93,16 +93,16 @@ module.exports = {
 								actionId: 'flash_listener_client',
 								options: {
 									listener_client: self.listener_clients[i].id,
-								}
-							}
+								},
+							},
 						],
-						up: []
-					}
+						up: [],
+					},
 				],
-				feedbacks: []
-			});
+				feedbacks: [],
+			})
 		}
-	
-		this.setPresetDefinitions(presets);
-	}
+
+		this.setPresetDefinitions(presets)
+	},
 }
