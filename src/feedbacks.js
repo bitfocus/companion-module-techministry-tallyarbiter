@@ -120,9 +120,6 @@ module.exports = {
 				let device = self.GetDeviceByDeviceId(feedback.options.device)
 				let busOption = self.GetBusById(feedback.options.busOption)
 
-				console.log('device', device)
-				console.log('busOption', busOption)
-
 				if (device) {
 					for (let j = 0; j < self.device_states.length; j++) {
 						if (
@@ -130,17 +127,14 @@ module.exports = {
 							self.GetBusById(self.device_states[j].busId) === busOption
 						) {
 							if (self.device_states[j].sources.length > 0) {
-								console.log('device in bus')
 								return true
 							} else {
-								console.log('device not in bus')
 								return false
 							}
 						}
 					}
 				}
 
-				console.log('device not found')
 				return false
 			},
 		}

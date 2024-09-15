@@ -25,6 +25,20 @@ module.exports = {
 		variables.push({ name: 'Total TSL Clients', variableId: 'total_tsl_clients' })
 		variables.push({ name: 'Total Cloud Destinations', variableId: 'total_cloud_destinations' })
 
+		//bus options variables
+		for (let i = 0; i < this.bus_options.length; i++) {
+			variables.push({
+				name: 'Bus ' + this.bus_options[i].id + ' Name',
+				variableId: 'bus_' + this.bus_options[i].id + '_name',
+			})
+
+			//current sources
+			variables.push({
+				name: 'Bus ' + this.bus_options[i].label + ' Current Devices',
+				variableId: 'bus_' + this.bus_options[i].id + '_devices',
+			})
+		}
+
 		this.setVariableDefinitions(variables)
 	},
 
