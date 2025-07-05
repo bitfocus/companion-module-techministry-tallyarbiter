@@ -219,6 +219,7 @@ module.exports = {
 	},
 
 	sendCommand(cmd, arg1 = null, arg2 = null, arg3 = null) {
+		let self = this
 		if (self.socket !== undefined) {
 			if (self.config.verbose) {
 				self.log('info', 'Sending: ' + cmd)
