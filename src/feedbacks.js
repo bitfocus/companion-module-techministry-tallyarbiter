@@ -194,9 +194,14 @@ module.exports = {
 			},
 		}
 
-		feedbackscloud_destinations = {
-			label: 'Cloud Destination Offline',
+		feedbacks.cloud_destinations = {
+			type: 'boolean',
+			name: 'Cloud Destination Offline',
 			description: 'If the selected Cloud Destination goes offline, change the color of the button',
+			defaultStyle: {
+				color: foregroundColorWhite,
+				bgcolor: backgroundColorRed,
+			},
 			options: [
 				{
 					type: 'dropdown',
@@ -207,11 +212,38 @@ module.exports = {
 				},
 			],
 			callback: function (feedback) {
-				let opt = feedback.options
-
 				let cloud_destination = self.GetCloudDestinationById(feedback.options.cloud_destination)
 				if (cloud_destination) {
 					if (cloud_destination.connected === false) {
+						return true
+					}
+				}
+
+				return false
+			},
+		}
+
+		feedbacks.busActive = {
+			type: 'boolean',
+			name: 'Bus Has Active Device(s)',
+			description:
+				'If any device is currently active (has a source) on the selected Bus, change the color of the button',
+			defaultStyle: {
+				color: foregroundColorWhite,
+				bgcolor: backgroundColorRed,
+			},
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Bus',
+					id: 'busOption',
+					choices: self.CHOICES_BUS_OPTIONS,
+					default: self.CHOICES_BUS_OPTIONS[0].id,
+				},
+			],
+			callback: function (feedback) {
+				for (let i = 0; i < self.device_states.length; i++) {
+					if (self.device_states[i].busId === feedback.options.busOption && self.device_states[i].sources.length > 0) {
 						return true
 					}
 				}

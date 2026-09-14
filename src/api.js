@@ -34,7 +34,7 @@ module.exports = {
 			self.socket.on('connect', function () {
 				self.log('info', 'Connected to Tally Arbiter. Retrieving data.')
 				self.updateStatus(InstanceStatus.Ok)
-				self.socket.emit('companion')
+				self.authenticateAndInit()
 			})
 
 			self.socket.on('disconnect', function () {
@@ -172,7 +172,7 @@ module.exports = {
 					if (self.listener_clients[i].inactive === false) {
 						let listenerClientObj = {}
 						listenerClientObj.id = self.listener_clients[i].id
-						listenerClientObj.label = `${self.GetDeviceByDeviceId(self.listener_clients[i].deviceId).name} - ${self.listener_clients[i].ipAddress} (${self.listener_clients[i].listenerType})`
+						listenerClientObj.label = self.GetListenerClientLabel(self.listener_clients[i])
 						self.listener_clients_array.push(listenerClientObj)
 					}
 				}
@@ -211,10 +211,50 @@ module.exports = {
 				self.checkFeedbacks('cloud_destinations')
 			})
 
+			self.socket.on('must_change_password', function () {
+				self.updateStatus(InstanceStatus.ConnectionFailure)
+				self.log(
+					'error',
+					'Tally Arbiter requires the configured user to change its password before it can be used. Log in to the Tally Arbiter web UI and change the password, then reconnect this module.',
+				)
+			})
+
 			self.socket.on('error', function (error) {
 				self.updateStatus(InstanceStatus.ConnectionFailure)
 				self.log('error', 'Error from Tally Arbiter: ' + error)
+
+				if (typeof error === 'string' && error.indexOf('Access token required') !== -1 && !self.config.username) {
+					self.log(
+						'error',
+						'This Tally Arbiter server requires a login (v3.3+). Enter a username and password with the "producer" or "admin" role in the module configuration.',
+					)
+				}
 			})
+		}
+	},
+
+	// Performs the login -> access_token -> companion handshake required by Tally Arbiter 3.3+.
+	// Older servers ignore the extra events and simply respond to 'companion' as before.
+	authenticateAndInit() {
+		let self = this
+
+		if (self.config.username && self.config.password) {
+			self.socket.emit('login', self.config.username, self.config.password)
+
+			self.socket.once('login_response', function (response) {
+				if (response && response.loginOk) {
+					self.socket.emit('access_token', response.accessToken)
+					self.socket.emit('companion')
+				} else {
+					self.updateStatus(InstanceStatus.ConnectionFailure)
+					self.log(
+						'error',
+						'Tally Arbiter login failed: ' + (response && response.message ? response.message : 'Unknown error'),
+					)
+				}
+			})
+		} else {
+			self.socket.emit('companion')
 		}
 	},
 

@@ -28,4 +28,10 @@ module.exports = {
 		//gets the Cloud Desination object by id
 		return this.cloud_destinations.find(({ id }) => id === cloudDestinationId)
 	},
+
+	GetListenerClientLabel: function (listenerClient) {
+		//builds a human-readable label for a Listener Client, e.g. "Cam 01 - 192.168.1.50 (web)"
+		let device = this.GetDeviceByDeviceId(listenerClient.deviceId)
+		return `${device ? device.name : 'Unknown Device'} - ${listenerClient.ipAddress} (${listenerClient.listenerType})`
+	},
 }

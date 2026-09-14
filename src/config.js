@@ -46,6 +46,37 @@ module.exports = {
 			},
 			{
 				type: 'static-text',
+				id: 'info3',
+				label: 'Login (Tally Arbiter 3.3+)',
+				width: 12,
+				value: `
+					<div class="alert alert-info">
+						Tally Arbiter 3.3 and later require a login before the Companion connection can retrieve data.
+						Create a dedicated Tally Arbiter user with the "producer" role for this connection (Settings &rarr; Users
+						in the Tally Arbiter web UI) rather than reusing an "admin" account &mdash; this module stores the
+						password in Companion's configuration, so a producer-only account limits what could be done with it if
+						that configuration were ever exposed. Make sure the account has already had its password changed from
+						the default before entering its credentials below. Leave both fields blank if you are connecting to a
+						Tally Arbiter server older than 3.3.
+					</div>
+				`,
+			},
+			{
+				type: 'textinput',
+				id: 'username',
+				label: 'Username',
+				width: 4,
+				default: '',
+			},
+			{
+				type: 'textinput',
+				id: 'password',
+				label: 'Password',
+				width: 4,
+				default: '',
+			},
+			{
+				type: 'static-text',
 				id: 'dummy1',
 				width: 12,
 				label: ' ',

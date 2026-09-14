@@ -64,7 +64,7 @@ module.exports = {
 						oldDeviceId = self.listener_clients[i].deviceId
 					}
 				}
-				self.sendCommand('reassign', options.listener_client, oldDeviceId, event.options.device)
+				self.sendCommand('reassign', event.options.listener_client, oldDeviceId, event.options.device)
 			},
 		}
 
